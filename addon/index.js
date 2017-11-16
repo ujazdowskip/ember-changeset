@@ -52,7 +52,7 @@ const defaultOptions = { skipValidate: false };
  * @param  {Object} obj
  * @param  {Function} validateFn
  * @param  {Object} validationMap
- * @param  {Object}  options
+ * @param  {Object} options
  * @return {Ember.Object}
  */
 export function changeset(obj, validateFn = defaultValidatorFn, validationMap = {}, options = {}) {
@@ -228,7 +228,7 @@ export function changeset(obj, validateFn = defaultValidatorFn, validationMap = 
         savePromise = content.save(options);
       }
 
-      return savePromise.then((result) => {
+      return resolve(savePromise).then((result) => {
         this.rollback();
         return result;
       });
@@ -336,6 +336,7 @@ export function changeset(obj, validateFn = defaultValidatorFn, validationMap = 
       return resolve(this._validateAndSet(key, this._valueFor(key)));
     },
 
+
     /**
      * Checks to see if async validator for a given key has not resolved.
      * If no key is provided it will check to see if any async validator is running.
@@ -352,6 +353,21 @@ export function changeset(obj, validateFn = defaultValidatorFn, validationMap = 
       return !isEmpty(ks);
     },
 
+    /**
+     * Checks to see if async validator for a given key has not resolved.
+     * If no key is provided it will check to see if any async validator is running.
+     *
+     * @public
+     * @param  {String|Undefined} key
+     * @return {boolean}
+     */
+    isValidating(key) {
+      let runningValidations = get(this, RUNNING_VALIDATIONS);
+      let ks = emberArray(keys(runningValidations));
+      if (key) { return ks.includes(key); }
+
+      return !isEmpty(ks);
+    },
 
     /**
      * Manually add an error to the changeset. If there is an existing error or
@@ -365,6 +381,7 @@ export function changeset(obj, validateFn = defaultValidatorFn, validationMap = 
      */
     addError(key, options) {
       let errors = get(this, ERRORS);
+
       if (!isObject(options)) {
         let value = get(this, key);
         options = { value, validation: options };
@@ -564,6 +581,12 @@ export function changeset(obj, validateFn = defaultValidatorFn, validationMap = 
         }
         this.notifyPropertyChange(CHANGES);
         this.notifyPropertyChange(root);
+
+        let errors = get(this, ERRORS);
+        if (errors['__ember_meta__'] && errors['__ember_meta__']['values']) {
+          delete errors['__ember_meta__']['values'][key];
+          set(this, ERRORS, errors);
+        }
 
         return value;
       }
